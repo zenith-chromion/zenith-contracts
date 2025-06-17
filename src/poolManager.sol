@@ -8,15 +8,18 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 contract PoolManager {
     using SafeERC20 for IERC20;
 
+    // errors
     error PoolManager__Not_Fund_Manager();
     error PoolManager__Insufficient_Amount();
 
+    // events
     event PoolManager__LiquidityAdded(
         uint256 indexed poolId,
         address depositor,
         uint256 amount
     );
 
+    // state variables
     enum Tier {
         T1,
         T2,
@@ -33,6 +36,7 @@ contract PoolManager {
     mapping(address => uint256) public s_fmWithdrawn; // total amount withdrawn by each fund manager
     mapping(Tier => uint256) public s_tierLimits; // percentage of the total liquidity that a fund manager of a specific tier can withdraw at a time
 
+    // modifiers
     modifier onlyFM() {
         if (!s_isFM[msg.sender]) {
             revert PoolManager__Not_Fund_Manager();
@@ -40,6 +44,7 @@ contract PoolManager {
         _;
     }
 
+    // constructor
     constructor(
         address _token,
         string memory _cidHash,
@@ -59,6 +64,13 @@ contract PoolManager {
         s_tierLimits[Tier.T3] = 20;
     }
 
+    // functions
+
+    /**
+     * @dev Adds liquidity to the pool(on eth sepolia) by transferring tokens from the sender to the contract.
+     * @param _amount The amount of tokens to add as liquidity.
+     * NOTE: The contract must be approved to spend the specified amount of tokens by the sender.
+     */
     function addLiquidity(uint256 _amount) public {
         if (_amount == 0) {
             revert PoolManager__Insufficient_Amount();

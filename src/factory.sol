@@ -26,15 +26,18 @@ contract Factory {
     ) public returns (address, address, address) {
         address poolArbitrumSepolia = deployerArbitrumSepolia.deployNewPool(
             _tokenArbitrum,
-            _cidHash
+            _cidHash,
+            msg.sender
         );
         address poolEthSepolia = deployerEthSepolia.deployNewPool(
             _tokenEth,
-            _cidHash
+            _cidHash,
+            msg.sender
         );
         address poolPolygon = deployerPolygon.deployNewPool(
             _tokenPolygon,
-            _cidHash
+            _cidHash,
+            msg.sender
         );
 
         return (poolArbitrumSepolia, poolEthSepolia, poolPolygon);
