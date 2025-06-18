@@ -1,13 +1,14 @@
+// This is a contract which is used to send ERC20 tokens across different blockchains like polygons , arbitrum, etc.(ccip is a chainlink)
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {IRouterClient} from "@ccip/interfaces/IRouterClient.sol";
-import {Client} from "@ccip/libraries/Client.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IRouterClient} from "@ccip/interfaces/IRouterClient.sol";// an interface which interacts with chianlinks ccip
+import {Client} from "@ccip/libraries/Client.sol"; // ?? (contains some kind of data structores for sending some tokens across chains)
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol"; 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract CCIPSender {
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20;// SafeERC20 adds checks and fallback mechanisms to prevent bugs or token loss
 
     // errors
     error CCIPSender__Insufficient_Link_Balance();

@@ -18,14 +18,15 @@ contract Deployer is Ownable {
     );
 
     // state variables
-    uint256 public s_poolId;
+    uint256 public s_poolId; // id of the pool
     address private immutable i_ccipSender;
 
     Factory public factory;
 
     // constructor
     constructor(address _ccipSender) Ownable(msg.sender) {
-        s_poolId = 0;
+        // when we deploy , we would need the address of the ccip sender.
+        s_poolId = 0; // initial id is set to 0.
         i_ccipSender = _ccipSender;
     }
 
@@ -47,7 +48,7 @@ contract Deployer is Ownable {
         if (msg.sender != address(factory)) {
             revert Deployer__Unauthorized();
         }
-        PoolManager poolManager = new PoolManager(
+        PoolManager poolManager = new PoolManager( // initialising the pool created with all the details.
             _token,
             _cidHash,
             s_poolId,

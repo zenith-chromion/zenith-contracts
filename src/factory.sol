@@ -1,3 +1,4 @@
+// factory contracts are used to deploy multiple instances of other contracts.
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
