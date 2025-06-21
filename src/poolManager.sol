@@ -5,6 +5,7 @@ import {CCIPSender} from "./ccipSender.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Pool} from "./pool.sol";
+import {Dao} from "./dao.sol";
 
 contract PoolManager {
     using SafeERC20 for IERC20;
@@ -49,6 +50,7 @@ contract PoolManager {
     uint256 public immutable i_poolId;
     CCIPSender public immutable i_ccipSender;
     Pool public immutable i_pool;
+    Dao public immutable i_dao;
 
     mapping(address => bool) public s_isFM;
     mapping(address => Tier) public s_tiers;
@@ -88,6 +90,7 @@ contract PoolManager {
         s_royalties[Tier.T3] = 12;
 
         i_pool = new Pool("abc", "def", _token);
+        i_dao = new Dao();
     }
 
     // functions
@@ -188,5 +191,14 @@ contract PoolManager {
      */
     function getTotalLiquidity() public view returns (uint256) {
         return IERC20(i_token).balanceOf(address(i_pool));
+    }
+
+    /**
+     * @dev Returns the balance of lp tokens for a given account.
+     * @param _account The address of the account to check.
+     * @return The balance of lp tokens for the account.
+     */
+    function getLpBalance(address _account) public view returns (uint256) {
+        return i_pool.balanceOf(_account);
     }
 }
