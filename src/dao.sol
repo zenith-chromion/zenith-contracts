@@ -3,8 +3,16 @@ pragma solidity ^0.8.20;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {PoolManager} from "./poolManager.sol";
+import {AutomationCompatibleInterface} from "../lib/chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
+import {Client} from "@ccip/libraries/Client.sol";
+import {CCIPSender} from "./ccipSender.sol";
+import {IAny2EVMMessageReceiver} from "@ccip/interfaces/IAny2EVMMessageReceiver.sol";
 
-contract Dao is Ownable {
+contract Dao is
+    Ownable,
+    AutomationCompatibleInterface,
+    IAny2EVMMessageReceiver
+{
     // errors
     error Dao__Already_Voted();
     error Dao__Deadline_Exceeded();
@@ -22,6 +30,11 @@ contract Dao is Ownable {
         address indexed voter,
         bool support
     );
+    event Dao__ProposalExecuted(
+        uint256 indexed proposalId,
+        ProposalType proposalType,
+        bool approved
+    );
 
     // enums
     enum ProposalType {
@@ -35,14 +48,18 @@ contract Dao is Ownable {
     // state variables
     mapping(uint256 => Proposal) public s_proposals;
     uint256 public s_proposalId;
+    uint256 public s_nextProposalToExecute; // tracks the next proposal to execute, is incremented after each execution
     uint256 public constant VOTING_PERIOD = 7 days;
+    address public immutable i_daoAggregator;
     PoolManager public immutable i_poolManager;
+    CCIPSender public immutable i_ccipSender;
 
     // structs
     struct Proposal {
         ProposalType proposalType;
         address fm;
-        uint256 value; // For CHANGE_TIER, it's the tier; for CHANGE_ROYALTY, it's the new royalty percentage; for CHANGE_MAX_WITHDRAWAL, it's the new limit
+        uint256 value; // for CHANGE_ROYALTY, it's the new royalty percentage; for CHANGE_MAX_WITHDRAWAL, it's the new limit
+        uint256 tier;
         uint256 votesFor;
         uint256 votesAgainst;
         uint256 deadline;
@@ -51,9 +68,15 @@ contract Dao is Ownable {
     }
 
     // constructor
-    constructor() Ownable(msg.sender) {
+    constructor(
+        address _daoAggregator,
+        address _ccipSender
+    ) Ownable(msg.sender) {
         s_proposalId = 0;
+        s_nextProposalToExecute = 0;
         i_poolManager = PoolManager(msg.sender);
+        i_daoAggregator = _daoAggregator;
+        i_ccipSender = CCIPSender(_ccipSender);
     }
 
     // functions
@@ -69,12 +92,14 @@ contract Dao is Ownable {
     function createProposal(
         ProposalType proposalType,
         address fm,
-        uint256 value
+        uint256 value,
+        uint256 tier
     ) external returns (uint256 proposalId) {
         Proposal storage proposal = s_proposals[s_proposalId];
         proposal.proposalType = proposalType;
         proposal.fm = fm;
         proposal.value = value;
+        proposal.tier = tier;
         proposal.votesFor = 0;
         proposal.votesAgainst = 0;
         proposal.deadline = block.timestamp + VOTING_PERIOD;
@@ -108,5 +133,79 @@ contract Dao is Ownable {
         else proposal.votesAgainst++;
 
         emit Dao__VoteCasted(proposalId, msg.sender, support);
+    }
+
+    /**
+     * @dev Checks if the upkeep is needed for the next proposal to execute.
+     * @param data The data passed to the function (not used in this implementation).
+     * @return upkeepNeeded True if the upkeep is needed, false otherwise.
+     * @return data The data to be passed to the performUpkeep function (not used in this implementation).
+     */
+    function checkUpkeep(
+        bytes calldata
+    ) external view override returns (bool upkeepNeeded, bytes memory data) {
+        Proposal storage proposal = s_proposals[s_nextProposalToExecute];
+        upkeepNeeded = (!proposal.executed &&
+            proposal.deadline <= block.timestamp);
+    }
+
+    /**
+     * @dev Performs the upkeep for the next proposal to execute.
+     * NOTE: The function sends the vote count to the DAO aggregator via CCIP and marks the proposal as executed.
+     */
+    function performUpkeep(bytes calldata) external override {
+        Proposal storage proposal = s_proposals[s_nextProposalToExecute];
+        i_ccipSender.sendVoteCount(
+            11155111, // Eth Sepolia chain id
+            s_nextProposalToExecute,
+            proposal.votesFor,
+            proposal.votesAgainst,
+            i_daoAggregator
+        );
+
+        proposal.executed = true;
+        s_nextProposalToExecute++;
+    }
+
+    /**
+     * @dev Receives the proposal result from the DAO aggregator via CCIP.
+     * @param message The message containing the proposal result.
+     * NOTE: The function executes the proposal based on the received data.
+     */
+    function ccipReceive(
+        Client.Any2EVMMessage calldata message
+    ) external override {
+        (uint256 proposalId, bool approved) = abi.decode(
+            message.data,
+            (uint256, bool)
+        );
+        Proposal storage proposal = s_proposals[proposalId];
+
+        if (approved) {
+            if (proposal.proposalType == ProposalType.ADD_FM) {
+                i_poolManager.addFundManager(proposal.fm);
+            } else if (proposal.proposalType == ProposalType.REMOVE_FM) {
+                i_poolManager.removeFundManager(proposal.fm);
+            } else if (proposal.proposalType == ProposalType.CHANGE_TIER) {
+                i_poolManager.changeTier(
+                    proposal.fm,
+                    PoolManager.Tier(proposal.tier)
+                );
+            } else if (proposal.proposalType == ProposalType.CHANGE_ROYALTY) {
+                i_poolManager.changeRoyalties(
+                    PoolManager.Tier(proposal.tier),
+                    proposal.value
+                );
+            } else if (
+                proposal.proposalType == ProposalType.CHANGE_MAX_WITHDRAWAL
+            ) {
+                i_poolManager.changeMaxWithdrawal(
+                    PoolManager.Tier(proposal.tier),
+                    proposal.value
+                );
+            }
+        }
+
+        emit Dao__ProposalExecuted(proposalId, proposal.proposalType, approved);
     }
 }
