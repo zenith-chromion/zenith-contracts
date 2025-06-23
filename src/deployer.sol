@@ -4,8 +4,10 @@ pragma solidity ^0.8.20;
 import {PoolManager} from "./poolManager.sol";
 import {Factory} from "./factory.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IAny2EVMMessageReceiver} from "@ccip/interfaces/IAny2EVMMessageReceiver.sol";
+import {Client} from "@ccip/libraries/Client.sol";
 
-contract Deployer is Ownable {
+contract Deployer is Ownable, IAny2EVMMessageReceiver {
     // errors
     error Deployer__Unauthorized();
 
@@ -18,15 +20,14 @@ contract Deployer is Ownable {
     );
 
     // state variables
-    uint256 public s_poolId; // id of the pool
+    uint256 public s_poolId;
     address private immutable i_ccipSender;
 
     Factory public factory;
 
     // constructor
     constructor(address _ccipSender) Ownable(msg.sender) {
-        // when we deploy , we would need the address of the ccip sender.
-        s_poolId = 0; // initial id is set to 0.
+        s_poolId = 0;
         i_ccipSender = _ccipSender;
     }
 
@@ -37,18 +38,15 @@ contract Deployer is Ownable {
      * @param _token The address of the token for the pool.
      * @param _cidHash The CID hash of the pool's metadata.
      * @return The address of the newly deployed PoolManager contract.
-     * NOTE: 1. The function is called on the the respective contract deployed on all the chains.
-     *       2. Only callable by the factory contract.
+     * NOTE: The function is called on the the respective contract deployed on all the chains when a factory contract
+     *       sends a message to deploy a new pool.
      */
     function deployNewPool(
         address _token,
         string memory _cidHash,
         address _fm
-    ) external returns (address) {
-        if (msg.sender != address(factory)) {
-            revert Deployer__Unauthorized();
-        }
-        PoolManager poolManager = new PoolManager( // initialising the pool created with all the details.
+    ) internal returns (address) {
+        PoolManager poolManager = new PoolManager(
             _token,
             _cidHash,
             s_poolId,
@@ -64,6 +62,22 @@ contract Deployer is Ownable {
             _cidHash
         );
         return address(poolManager);
+    }
+
+    /**
+     * @dev Receives messages from the CCIP network to deploy new pools.
+     * @param message The message containing the token address, CID hash, and fund manager address.
+     * NOTE: 1. The function is called by the CCIP network when a message is sent from the factory contract.
+     *       2. The message must contain the token address, CID hash, and fund manager address.
+     */
+    function ccipReceive(
+        Client.Any2EVMMessage calldata message
+    ) external override {
+        (address token, string memory cidHash, address fm) = abi.decode(
+            message.data,
+            (address, string, address)
+        );
+        deployNewPool(token, cidHash, fm);
     }
 
     /**

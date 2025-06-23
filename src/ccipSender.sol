@@ -33,6 +33,13 @@ contract CCIPSender {
         uint256 negVotes,
         address indexed receiver
     );
+    event CCIPSender__PoolDetailsSent(
+        uint64 indexed destinationChainId,
+        address indexed receiver,
+        address indexed fundManager,
+        address token,
+        string cidHash
+    );
 
     // state variables
     IRouterClient public immutable i_router;
@@ -93,6 +100,49 @@ contract CCIPSender {
             _token,
             _receiver,
             _amount
+        );
+    }
+
+    /**
+     * @dev Sends new pool details to the specified deployer contract on a destination chain.
+     * @param _destinationChainId The ID of the destination chain.
+     * @param _receiver The address of the deployer on the destination chain.
+     * @param _fundManager The address of the fund manager associated with the pool.
+     * @param _token The address of the token for the pool.
+     * @param _cidHash The CID hash of the pool's metadata.
+     * NOTE: 1. The function is called by the Factory contract deployed on the respective chain.
+     *       2. The receiver address must not be zero.
+     */
+    function sendPoolDetails(
+        uint64 _destinationChainId,
+        address _receiver,
+        address _fundManager,
+        address _token,
+        string memory _cidHash
+    ) external {
+        if (_receiver == address(0)) revert CCIPSender__Invalid_Receiver();
+
+        Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
+            receiver: abi.encode(_receiver),
+            data: abi.encode(_token, _cidHash, _fundManager),
+            tokenAmounts: new Client.EVMTokenAmount[](0),
+            feeToken: address(i_linkToken),
+            extraArgs: ""
+        });
+
+        uint256 fee = i_router.getFee(_destinationChainId, message);
+        if (fee > i_linkToken.balanceOf(address(this)))
+            revert CCIPSender__Insufficient_Link_Balance();
+
+        i_linkToken.approve(address(i_router), fee);
+
+        i_router.ccipSend(_destinationChainId, message);
+        emit CCIPSender__PoolDetailsSent(
+            _destinationChainId,
+            _receiver,
+            _fundManager,
+            _token,
+            _cidHash
         );
     }
 

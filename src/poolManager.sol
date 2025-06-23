@@ -123,7 +123,7 @@ contract PoolManager {
     // functions
 
     /**
-     * @dev Adds liquidity to the pool(on eth sepolia) by transferring tokens from the sender to the contract.
+     * @dev Adds liquidity to the pool(on the corresponding chain) by transferring tokens from the sender to the contract.
      * @param _amount The amount of tokens to add as liquidity.
      * NOTE: The contract must be approved to spend the specified amount of tokens by the sender.
      */
