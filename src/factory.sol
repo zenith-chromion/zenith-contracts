@@ -7,46 +7,46 @@ import {CCIPSender} from "./ccipSender.sol";
 contract Factory {
     Deployer public deployerArbitrumSepolia;
     Deployer public deployerEthSepolia;
-    Deployer public deployerPolygon;
+    Deployer public deployerBase;
     CCIPSender public immutable i_ccipSender;
 
     constructor(
         address _deployerArbitrumSepolia,
         address _deployerEthSepolia,
-        address _deployerPolygon,
+        address _deployerBase,
         address _ccipSender
     ) {
         deployerArbitrumSepolia = Deployer(_deployerArbitrumSepolia);
         deployerEthSepolia = Deployer(_deployerEthSepolia);
-        deployerPolygon = Deployer(_deployerPolygon);
+        deployerBase = Deployer(_deployerBase);
         i_ccipSender = CCIPSender(_ccipSender);
     }
 
     function createNewPool(
         address _tokenArbitrum,
         address _tokenEth,
-        address _tokenPolygon,
+        address _tokenBase,
         string memory _cidHash
     ) public {
         i_ccipSender.sendPoolDetails(
-            1,
+            16015286601757825753,
             address(deployerEthSepolia),
             msg.sender,
             _tokenEth,
             _cidHash
         );
         i_ccipSender.sendPoolDetails(
-            2,
+            3478487238524512106,
             address(deployerArbitrumSepolia),
             msg.sender,
             _tokenArbitrum,
             _cidHash
         );
         i_ccipSender.sendPoolDetails(
-            3,
-            address(deployerPolygon),
+            10344971235874465080,
+            address(deployerBase),
             msg.sender,
-            _tokenPolygon,
+            _tokenBase,
             _cidHash
         );
     }

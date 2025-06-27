@@ -156,10 +156,11 @@ contract Dao is
     function performUpkeep(bytes calldata) external override {
         Proposal storage proposal = s_proposals[s_nextProposalToExecute];
         i_ccipSender.sendVoteCount(
-            11155111, // Eth Sepolia chain id
+            16015286601757825753, // Eth Sepolia chain selector
             s_nextProposalToExecute,
             proposal.votesFor,
             proposal.votesAgainst,
+            address(this),
             i_daoAggregator
         );
 

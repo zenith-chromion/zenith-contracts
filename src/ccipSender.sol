@@ -161,13 +161,14 @@ contract CCIPSender {
         uint256 _proposalId,
         uint256 _posVotes,
         uint256 _negVotes,
+        address _sender,
         address _receiver
     ) external {
         if (_receiver == address(0)) revert CCIPSender__Invalid_Receiver();
 
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
             receiver: abi.encode(_receiver),
-            data: abi.encode(_proposalId, _posVotes, _negVotes),
+            data: abi.encode(_proposalId, _posVotes, _negVotes, _sender),
             tokenAmounts: new Client.EVMTokenAmount[](0),
             feeToken: address(i_linkToken),
             extraArgs: ""

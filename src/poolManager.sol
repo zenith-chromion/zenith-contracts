@@ -117,7 +117,10 @@ contract PoolManager {
         s_royalties[Tier.T3] = 12;
 
         i_pool = new Pool("abc", "def", _token);
-        i_dao = new Dao(address(0), _ccipSender); // address(0) is a placeholder, should be set to the DAO aggregator address later
+        i_dao = new Dao(
+            0xDD820ED67Ea117C9EdB53C653f91904608c9d63A,
+            _ccipSender
+        );
     }
 
     // functions
