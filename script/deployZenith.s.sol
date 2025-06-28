@@ -9,8 +9,9 @@ import {Factory} from "../src/factory.sol";
 
 contract DeployDaoAggregator is Script {
     function run() public returns (DaoAggregator) {
+        address ccipRouter = vm.envAddress("CCIP_ROUTER");
         vm.startBroadcast();
-        DaoAggregator daoAggregator = new DaoAggregator();
+        DaoAggregator daoAggregator = new DaoAggregator(ccipRouter);
         vm.stopBroadcast();
         return daoAggregator;
     }
@@ -30,8 +31,9 @@ contract DeployCCIPSender is Script {
 contract DeployDeployer is Script {
     function run() public returns (Deployer) {
         address ccipSender = vm.envAddress("CCIP_SENDER");
+        address router = vm.envAddress("CCIP_ROUTER");
         vm.startBroadcast();
-        Deployer deployer = new Deployer(ccipSender);
+        Deployer deployer = new Deployer(ccipSender, router);
         vm.stopBroadcast();
         return deployer;
     }
@@ -40,11 +42,15 @@ contract DeployDeployer is Script {
 contract DeployFactory is Script {
     function run() public returns (Factory) {
         vm.startBroadcast();
+        address deployerArbitrum = vm.envAddress("DEPLOYER_ARBITRUM");
+        address deployerEth = vm.envAddress("DEPLOYER_ETH");
+        address deployerBase = vm.envAddress("DEPLOYER_BASE");
+        address ccipSender = vm.envAddress("CCIP_SENDER");
         Factory factory = new Factory(
-            0xcC6711ea916Bbd0713b440D734580605E0f2500b,
-            0xf8dC7E714Fca80C7F732f15B6c585D6878FE065E,
-            0x3BCE2eA01dA58A3790AF5235830F00a4A5ab64a6,
-            0x18B93432ee5651c0B54c38a656F9e5201D1bF0D1
+            deployerArbitrum,
+            deployerEth,
+            deployerBase,
+            ccipSender
         );
         vm.stopBroadcast();
         return factory;

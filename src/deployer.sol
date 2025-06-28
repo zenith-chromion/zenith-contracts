@@ -6,8 +6,9 @@ import {Factory} from "./factory.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IAny2EVMMessageReceiver} from "@ccip/interfaces/IAny2EVMMessageReceiver.sol";
 import {Client} from "@ccip/libraries/Client.sol";
+import {CCIPReceiver} from "@ccip/applications/CCIPReceiver.sol";
 
-contract Deployer is Ownable, IAny2EVMMessageReceiver {
+contract Deployer is Ownable, CCIPReceiver {
     // errors
     error Deployer__Unauthorized();
 
@@ -26,7 +27,7 @@ contract Deployer is Ownable, IAny2EVMMessageReceiver {
     Factory public factory;
 
     // constructor
-    constructor(address _ccipSender) Ownable(msg.sender) {
+    constructor(address _ccipSender, address _router) Ownable(msg.sender) CCIPReceiver(_router) {
         s_poolId = 0;
         i_ccipSender = _ccipSender;
     }
@@ -44,14 +45,16 @@ contract Deployer is Ownable, IAny2EVMMessageReceiver {
     function deployNewPool(
         address _token,
         string memory _cidHash,
-        address _fm
+        address _fm,
+        address _router
     ) internal returns (address) {
         PoolManager poolManager = new PoolManager(
             _token,
             _cidHash,
             s_poolId,
             i_ccipSender,
-            _fm
+            _fm,
+            _router
         );
         s_poolId++;
 
@@ -70,14 +73,14 @@ contract Deployer is Ownable, IAny2EVMMessageReceiver {
      * NOTE: 1. The function is called by the CCIP network when a message is sent from the factory contract.
      *       2. The message must contain the token address, CID hash, and fund manager address.
      */
-    function ccipReceive(
-        Client.Any2EVMMessage calldata message
-    ) external override {
+    function _ccipReceive(
+        Client.Any2EVMMessage memory message
+    ) internal override {
         (address token, string memory cidHash, address fm) = abi.decode(
             message.data,
             (address, string, address)
         );
-        deployNewPool(token, cidHash, fm);
+        deployNewPool(token, cidHash, fm, getRouter());
     }
 
     /**

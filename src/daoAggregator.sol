@@ -5,8 +5,9 @@ import {IAny2EVMMessageReceiver} from "@ccip/interfaces/IAny2EVMMessageReceiver.
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Client} from "@ccip/libraries/Client.sol";
 import {CCIPSender} from "./ccipSender.sol";
+import {CCIPReceiver} from "@ccip/applications/CCIPReceiver.sol";
 
-contract DaoAggregator is IAny2EVMMessageReceiver, Ownable {
+contract DaoAggregator is CCIPReceiver, Ownable {
     // state variables
     CCIPSender public s_ccipSender;
     mapping(uint256 proposalId => mapping(uint256 chainId => bool executed))
@@ -21,7 +22,7 @@ contract DaoAggregator is IAny2EVMMessageReceiver, Ownable {
         public s_baseTestnetProposalReceiver;
 
     // constructor
-    constructor() Ownable(msg.sender) {}
+    constructor(address _router) Ownable(msg.sender) CCIPReceiver(_router) {}
 
     // functions
 
@@ -33,9 +34,9 @@ contract DaoAggregator is IAny2EVMMessageReceiver, Ownable {
      *       3. In case the proposal has been executed on all chains, it sends the result to the respective
      *       DAO contracts.
      */
-    function ccipReceive(
-        Client.Any2EVMMessage calldata message
-    ) external override {
+    function _ccipReceive(
+        Client.Any2EVMMessage memory message
+    ) internal override {
         uint64 sourceChainSelector = message.sourceChainSelector;
         (
             uint256 proposalId,

@@ -99,7 +99,8 @@ contract PoolManager {
         string memory _cidHash,
         uint256 _poolId,
         address _ccipSender,
-        address _fm
+        address _fm,
+        address _router
     ) {
         i_token = _token;
         s_cidHash = _cidHash;
@@ -119,7 +120,8 @@ contract PoolManager {
         i_pool = new Pool("abc", "def", _token);
         i_dao = new Dao(
             0xDD820ED67Ea117C9EdB53C653f91904608c9d63A,
-            _ccipSender
+            _ccipSender,
+            _router
         );
     }
 

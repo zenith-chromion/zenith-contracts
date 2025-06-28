@@ -7,11 +7,12 @@ import {AutomationCompatibleInterface} from "../lib/chainlink/contracts/src/v0.8
 import {Client} from "@ccip/libraries/Client.sol";
 import {CCIPSender} from "./ccipSender.sol";
 import {IAny2EVMMessageReceiver} from "@ccip/interfaces/IAny2EVMMessageReceiver.sol";
+import {CCIPReceiver} from "@ccip/applications/CCIPReceiver.sol";
 
 contract Dao is
     Ownable,
     AutomationCompatibleInterface,
-    IAny2EVMMessageReceiver
+    CCIPReceiver
 {
     // errors
     error Dao__Already_Voted();
@@ -70,8 +71,9 @@ contract Dao is
     // constructor
     constructor(
         address _daoAggregator,
-        address _ccipSender
-    ) Ownable(msg.sender) {
+        address _ccipSender,
+        address _router
+    ) Ownable(msg.sender) CCIPReceiver(_router) {
         s_proposalId = 0;
         s_nextProposalToExecute = 0;
         i_poolManager = PoolManager(msg.sender);
@@ -173,9 +175,9 @@ contract Dao is
      * @param message The message containing the proposal result.
      * NOTE: The function executes the proposal based on the received data.
      */
-    function ccipReceive(
-        Client.Any2EVMMessage calldata message
-    ) external override {
+    function _ccipReceive(
+        Client.Any2EVMMessage memory message
+    ) internal override {
         (uint256 proposalId, bool approved) = abi.decode(
             message.data,
             (uint256, bool)
